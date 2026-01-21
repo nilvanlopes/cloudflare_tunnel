@@ -1,0 +1,11 @@
+# config.example.yml
+tunnel: <TUNNEL_ID>
+credentials-file: /etc/cloudflared/credentials.json
+ingress:
+  # Wildcard for all subdomains
+  - hostname: "*.example.com"
+    service: https://traefik.example.com:443
+
+
+  # Mandatory catch-all rule (always last)
+  - service: http_status:404

@@ -1,0 +1,29 @@
+version: "3.8"
+
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate --config /etc/cloudflared/config.yml run
+    volumes:
+      - ./credentials.json:/etc/cloudflared/credentials.json:ro
+      - ./cert.pem:/etc/cloudfared/cert.pem:ro
+    networks:
+      - traefik-public
+    configs:
+      - source: cloudflared-config
+        target: /etc/cloudflared/config.yml
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+      restart_policy:
+        condition: on-failure
+
+networks:
+  traefik-public:
+    external: true
+
+configs:
+  cloudflared-config:
+    external: true

@@ -1,12 +1,9 @@
-version: "3.8"
-
 services:
   cloudflared:
     image: cloudflare/cloudflared:latest
     command: tunnel --no-autoupdate --config /etc/cloudflared/config.yml run
     volumes:
       - ./credentials.json:/etc/cloudflared/credentials.json:ro
-      - ./cert.pem:/etc/cloudfared/cert.pem:ro
     networks:
       - traefik-public
     configs:
@@ -26,4 +23,4 @@ networks:
 
 configs:
   cloudflared-config:
-    external: true
+    file: ./config.yml

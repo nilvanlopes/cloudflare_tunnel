@@ -1,23 +1,17 @@
 # Cloudflare Tunnel with Docker
 
-This project sets up a Cloudflare Tunnel using Docker to expose a local service to the internet.
+Este diretório contém os arquivos necessários para rodar um Cloudflare Tunnel via Docker, sem instalar `cloudflared` na máquina.
 
-## Prerequisites
+## Pré-requisitos
 
 - Docker
-- Docker Compose
-- A Cloudflare account
-- A domain managed by Cloudflare
+- Conta na Cloudflare
+- Domínio gerenciado pela Cloudflare
+- Host com suporte aos `sysctl` `net.core.rmem_max` e `net.core.wmem_max`
 
-## Setup
+## Ajustes de kernel usados na stack
 
-1.  **Create a Cloudflare Tunnel:** Follow the [Cloudflare documentation](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-run/create-tunnel) to create a tunnel and get your `TUNNEL_ID`.
-
-2.  **Create `credentials.json`:** Download the credentials file for your tunnel and save it as `credentials.json` in this directory.
-
-3.  **Create `cert.pem`:** If your service uses a self-signed certificate, you will need to provide the certificate to Cloudflare. Download your origin certificate from the Cloudflare dashboard and save it as `cert.pem`.
-
-4.  **Configure `config.yml`:** Create a `config.yml` file based on the `config.example.yml`:
+O serviço `cloudflared` no [docker-compose.yml](/mnt/d/docker/cloudflare_tunnel/docker-compose.yml) define:
 
     ```yaml
     # config.yml
@@ -37,16 +31,55 @@ This project sets up a Cloudflare Tunnel using Docker to expose a local service 
 
 5.  **Start the tunnel:**
 
-    ```bash
-    docker-compose up -d
-    ```
+```bash
+docker run --rm -i \
+  -v "$(pwd)/.cloudflared:/home/nonroot/.cloudflared" \
+  cloudflare/cloudflared:latest \
+  tunnel create traefik_swarm_routing
+```
 
-## `docker-compose.yml`
+Esse comando:
 
-The `docker-compose.yml` file defines the `cloudflared` service. It mounts the `credentials.json`, `cert.pem` and `config.yml` files into the container.
+- cria o tunnel `traefik_swarm_routing`
+- retorna o UUID do tunnel
+- gera o arquivo `./.cloudflared/<TUNNEL_UUID>.json`
 
-**Note:** The `traefik-public` network is an external network. You may need to create it or change it to your own network.
+## Tunnel criado neste diretório
 
-## `config.yml`
+O tunnel criado foi:
 
-The `config.yml` file is the configuration for the Cloudflare Tunnel. See the [Cloudflare documentation](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/configuration-file) for more information.
+- Nome: `traefik_swarm_routing`
+- UUID: `3647717f-6246-4d24-b5b8-1319be027c80`
+- Domínio: `nilvanlopes.com`
+
+O arquivo de credenciais gerado foi:
+
+- `./.cloudflared/3647717f-6246-4d24-b5b8-1319be027c80.json`
+
+## Configuração
+
+O arquivo [config.yml](/mnt/d/docker/cloudflare_tunnel/config.yml) foi configurado para:
+
+- usar o tunnel `3647717f-6246-4d24-b5b8-1319be027c80`
+- usar o arquivo de credenciais em `/etc/cloudflared/3647717f-6246-4d24-b5b8-1319be027c80.json`
+- encaminhar `*.nilvanlopes.com` para `https://traefik.nilvanlopes.com:443`
+
+Exemplo atual:
+
+```yaml
+tunnel: 3647717f-6246-4d24-b5b8-1319be027c80
+credentials-file: /etc/cloudflared/3647717f-6246-4d24-b5b8-1319be027c80.json
+
+ingress:
+  - hostname: "*.nilvanlopes.com"
+    service: https://traefik.nilvanlopes.com:443
+  - service: http_status:404
+```
+
+## Observação importante
+
+Neste fluxo, a Cloudflare não gera um arquivo chamado `credentials.json`. O arquivo real de credenciais é nomeado com o UUID do tunnel:
+
+- `<TUNNEL_UUID>.json`
+
+Se quiser usar o nome `credentials.json`, isso exigiria ajustar o `docker-compose.yml` para montar ou renomear esse arquivo. Com a configuração atual, o recomendado é usar o nome original gerado pelo `cloudflared`.

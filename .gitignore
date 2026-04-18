@@ -1,4 +1,5 @@
 # Credenciais e certificados
-cert.pem
+.cloudflared/
 credentials.json
+cert.pem
 config.yml
